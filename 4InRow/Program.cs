@@ -9,24 +9,23 @@ var random = new Random();
 
 while (true)
 {
-    board.DropCoin(1, board.BestMove(1, 12));
-    board.DropCoin(2, board.BestMove(2, 10));
-    Console.WriteLine(board);
+    board.DropCoin(1, board.BestMove(1, 10));
+    
+    
 
     if (board.Winner == 1)
     {
-        Console.WriteLine(board);
         Console.WriteLine("You win!");
         break;
     }
 
     if (board.IsFull)
     {
-        Console.WriteLine(board);
         Console.WriteLine("Tie!");
         break;
     }
 
+    board.DropCoin(2, board.BestMove(2, 6));
     if (board.Winner == 2)
     {
         Console.WriteLine("You lost!");
@@ -38,6 +37,7 @@ while (true)
         Console.WriteLine("Tie!");
         break;
     }
+    Console.WriteLine(board);
     {
         //Console.WriteLine("Pick a column 1 -8");
         //int move;
@@ -120,7 +120,7 @@ while (true)
         //}
     }
 }
-
+Console.WriteLine(board);
 Console.WriteLine("DONE");
 
 
@@ -252,7 +252,7 @@ public class Board
             moves.Add(Tuple.Create(i, MinMax(depth, playerId, false)));
             RemoveTopCoin(i);
         }
-
+        Console.WriteLine($"{playerId} Player: {String.Join(", ", moves.Select(x => $"{x.Item1+1} {x.Item2}"))}");
         int maxMoveScore = moves.Max(t => t.Item2);
         var bestMoves = moves.Where(t => t.Item2 == maxMoveScore).ToList();
         return bestMoves[random.Next(0, bestMoves.Count)].Item1;
@@ -265,13 +265,12 @@ public class Board
 
         var winner = Winner;
         if (winner == playerId)
-            return depth;
+            return depth+2;
         if (winner == (playerId==1?2:1))
-            return -depth;
+            return -depth-2;
         if (IsFull)
             return 0;
-
-        int bestValue = maximizingPlayer ? -1 : 1;
+        int bestValue = maximizingPlayer ? int.MinValue : int.MaxValue;
 
         for (int i = 0; i < Columns; i++)
         {
@@ -287,7 +286,7 @@ public class Board
                 beta = Math.Min(beta, bestValue);
 
             if (beta <= alpha)
-                break;
+                i++;
         }
 
         return bestValue;
