@@ -1,13 +1,23 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics;
 using System.Text;
 
 var board = new Board(7, 6);
 while (true)
 {
-    var q=board.BestMove(1, 7);
-    Console.WriteLine(q+1);
+    //Stopwatch stopWatch = new Stopwatch();
+    //stopWatch.Start();
+
+    var q = board.BestMove(1, 9);
+
+    //stopWatch.Stop();
+    //TimeSpan ts = stopWatch.Elapsed;
+    //string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+    //    ts.Hours, ts.Minutes, ts.Seconds,
+    //    ts.Milliseconds / 10);
+    //Console.WriteLine("RunTime " + elapsedTime);
+
+    Console.WriteLine(q + 1);
     board.DropCoin(1, q);
-    
 
     if (board.Winner == 1)
     {
@@ -21,9 +31,11 @@ while (true)
         break;
     }
     Console.WriteLine(board);
-    var w = board.BestMove(2, 7);
-    Console.WriteLine(w + 1);
-    board.DropCoin(2, w);
+    //var w = board.BestMove(2, 7);
+    //Console.WriteLine(w + 1);
+    int w;
+    while (!int.TryParse(Console.ReadLine(), out w) || (w < 1 || w > board.Columns)) ;
+    board.DropCoin(2, w - 1);
     if (board.Winner == 2)
     {
         Console.WriteLine("You lost!");
@@ -53,6 +65,8 @@ public class Board
 
     public Board(int cols, int rows)
     {
+        //int cols = 7;
+        //int rows = 6;
         Columns = cols;
         Rows = rows;
         board = new int?[cols, rows];
@@ -96,8 +110,7 @@ public class Board
         _changed = true;
         return true;
     }
-
-    private int EvaluateHorizontalSequences(int playerId)
+    public int EvaluateHorizontalSequences(int playerId)
     {
         int score = 0;
         int rows = board.GetLength(0);
@@ -105,7 +118,7 @@ public class Board
 
         for (int row = 0; row < rows; row++)
         {
-            for (int col = 0; col <= cols - 4; col++)
+            for (int col = 0; col < cols - 3; col++)
             {
                 // Check for potential winning sequences
                 int aiCount = 0;
@@ -113,7 +126,7 @@ public class Board
 
                 for (int k = 0; k < 4; k++)
                 {
-                    if (board[row, col + k] == (playerId==1?1:2)) // AI piece
+                    if (board[row, col + k] == (playerId == 1 ? 1 : 2)) // AI piece
                         aiCount++;
                     else if (board[row, col + k] == (playerId == 1 ? 2 : 1)) // Human piece
                         humanCount++;
@@ -123,9 +136,9 @@ public class Board
                 score += ScoreSequence(aiCount, humanCount);
             }
         }
+
         return score;
     }
-
     private int EvaluateVerticalSequences(int playerId)
     {
         int score = 0;
@@ -136,7 +149,7 @@ public class Board
         for (int col = 0; col < cols; col++)
         {
             // Check vertical sequences of 4 cells
-            for (int row = 0; row <= rows - 4; row++)
+            for (int row = 0; row < rows - 3; row++)
             {
                 int aiCount = 0;
                 int humanCount = 0;
@@ -165,9 +178,9 @@ public class Board
         int cols = board.GetLength(1);
 
         // Iterate through possible starting positions for diagonals
-        for (int row = 0; row <= rows - 4; row++)
+        for (int row = 0; row < rows - 3; row++)
         {
-            for (int col = 0; col <= cols - 4; col++)
+            for (int col = 0; col < cols - 3; col++)
             {
                 int aiCount = 0;
                 int humanCount = 0;
@@ -196,10 +209,10 @@ public class Board
         int cols = board.GetLength(1);
 
         // Iterate through possible starting positions for reverse diagonals
-        for (int row = 0; row <= rows - 4; row++)
+        for (int row = 3; row < rows; row++)
         {
             // Start from the rightmost columns to scan right-to-left diagonals
-            for (int col = cols - 1; col >= 3; col--)
+            for (int col = 0; col < cols - 3; col++)
             {
                 int aiCount = 0;
                 int humanCount = 0;
@@ -207,9 +220,9 @@ public class Board
                 // Check 4 consecutive diagonal cells (top-right to bottom-left)
                 for (int k = 0; k < 4; k++)
                 {
-                    if (board[row + k, col - k] == (playerId == 1 ? 1 : 2))
+                    if (board[row - k, col + k] == (playerId == 1 ? 1 : 2))
                         aiCount++;
-                    else if (board[row + k, col - k] == (playerId == 1 ? 2 : 1))
+                    else if (board[row - k, col + k] == (playerId == 1 ? 2 : 1))
                         humanCount++;
                 }
 
@@ -224,20 +237,8 @@ public class Board
     private int ScoreSequence(int aiCount, int humanCount)
     {
         // No pieces from either player
-        if (aiCount == 0 && humanCount == 0)
+        if ((aiCount == 0 && humanCount == 0) || (aiCount > 0 && humanCount > 0))
             return 0;
-
-        // Potential threats and opportunities
-        if (aiCount > 0 && humanCount > 0)
-            return 0; // Blocked sequence
-
-        // AI four-in-a-row
-        if (aiCount == 4)
-            return 1000;
-
-        // Human four-in-a-row
-        if (humanCount == 4)
-            return -1000;
 
         // Scoring based on sequence potential
         if (aiCount > 0)
@@ -299,22 +300,22 @@ public class Board
         Console.WriteLine($"{playerId} player: {String.Join(", ", moves.Select(x => $"{x.Item1+1} {x.Item2}"))}");
 
         int maxMoveScore = moves.Max(t => t.Item2);
-        var bestMoves = moves.Where(t => t.Item2 == maxMoveScore).ToList();
+        var bestMoves = moves.Where(t => t.Item2 == maxMoveScore).OrderBy(t => Math.Abs(t.Item1 - Columns/2)).ToList();
         return bestMoves[random.Next(0, bestMoves.Count)].Item1;
     }
 
     int MinMax(int depth, int playerId, bool maximizingPlayer = false, int alpha = int.MinValue, int beta = int.MaxValue)
     {
-        if (depth <= 0)
-            return EvaluateBoard(playerId, maximizingPlayer);
-
         var winner = Winner;
         if (winner == playerId)
-            return depth*100000;
+            return (depth+1)*100000;
         if (winner == (playerId==1?2:1))
-            return -(depth * 100000);
+            return -((depth+1) * 100000);
         if (IsFull)
             return 0;
+
+        if (depth == 0)
+            return EvaluateBoard(playerId, maximizingPlayer);
 
         int bestValue = maximizingPlayer?int.MinValue:int.MaxValue;
 
