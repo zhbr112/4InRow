@@ -1,23 +1,29 @@
 ﻿using System.Diagnostics;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 
 var board = new Board(7, 6);
 while (true)
 {
-    //Stopwatch stopWatch = new Stopwatch();
-    //stopWatch.Start();
+    Console.WriteLine("Введите ваш вариант:");
+    int w;
+    while (!int.TryParse(Console.ReadLine(), out w) || (w < 1 || w > board.Columns)) ;
+    board.DropCoin(1, w - 1);
 
-    var q = board.BestMove(1, 9);
+    // Stopwatch stopWatch = new Stopwatch();
+    // stopWatch.Start();
 
-    //stopWatch.Stop();
-    //TimeSpan ts = stopWatch.Elapsed;
-    //string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
-    //    ts.Hours, ts.Minutes, ts.Seconds,
-    //    ts.Milliseconds / 10);
-    //Console.WriteLine("RunTime " + elapsedTime);
+    // var q = board.BestMove(1, 10);
 
-    Console.WriteLine(q + 1);
-    board.DropCoin(1, q);
+    // stopWatch.Stop();
+    // TimeSpan ts = stopWatch.Elapsed;
+    // string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+    //     ts.Hours, ts.Minutes, ts.Seconds,
+    //     ts.Milliseconds / 10);
+    // Console.WriteLine("RunTime " + elapsedTime);
+
+    // Console.WriteLine(q + 1);
+    // board.DropCoin(1, q);
 
     if (board.Winner == 1)
     {
@@ -31,11 +37,28 @@ while (true)
         break;
     }
     Console.WriteLine(board);
-    //var w = board.BestMove(2, 7);
-    //Console.WriteLine(w + 1);
-    int w;
-    while (!int.TryParse(Console.ReadLine(), out w) || (w < 1 || w > board.Columns)) ;
-    board.DropCoin(2, w - 1);
+
+
+    // Console.WriteLine("Введите ваш вариант:");
+    // int w;
+    // while (!int.TryParse(Console.ReadLine(), out w) || (w < 1 || w > board.Columns));
+    // board.DropCoin(2, w - 1);
+
+    Stopwatch stopWatch = new Stopwatch();
+    stopWatch.Start();
+
+    var q = board.BestMove(2, 9);
+
+    stopWatch.Stop();
+    TimeSpan ts = stopWatch.Elapsed;
+    string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+       ts.Hours, ts.Minutes, ts.Seconds,
+       ts.Milliseconds / 10);
+    Console.WriteLine("RunTime " + elapsedTime);
+
+    Console.WriteLine(q + 1);
+    board.DropCoin(2, q);
+
     if (board.Winner == 2)
     {
         Console.WriteLine("You lost!");
@@ -55,13 +78,11 @@ Console.WriteLine(board);
 
 public class Board
 {
-    private readonly int?[,] board;
+    public readonly int?[,] board;
 
-    private int? _winner;
+    public int? _winner;
 
-    private bool _changed;
-
-    private Random random;
+    public bool _changed;
 
     public Board(int cols, int rows)
     {
@@ -70,11 +91,24 @@ public class Board
         Columns = cols;
         Rows = rows;
         board = new int?[cols, rows];
-        random = new Random();
+    }
+
+    public Board(int cols, int rows, int?[,] _board)
+    {
+        //int cols = 7;
+        //int rows = 6;
+        Columns = cols;
+        Rows = rows;
+        board = _board;
     }
 
     public int Columns { get; }
     public int Rows { get; }
+
+    public Board Copys()
+    {
+        return new Board(Columns, Rows, (int?[,])board.Clone());
+    }
 
     public bool ColumnFree(int column)
     {
@@ -245,9 +279,9 @@ public class Board
         {
             return aiCount switch
             {
-                1 => 1,
-                2 => 10,
-                3 => 100,
+                1 => 2,
+                2 => 20,
+                3 => 200,
                 _ => 0
             };
         }
@@ -256,9 +290,9 @@ public class Board
         {
             return -1 * (humanCount switch
             {
-                1 => 1 ,
-                2 => 10,
-                3 => 100,
+                1 => 2,
+                2 => 20,
+                3 => 200,
                 _ => 0
             });
         }
@@ -289,23 +323,38 @@ public class Board
 
     public int BestMove(int playerId, int depth)
     {
-        var moves = new List<Tuple<int, int>>();
-        for (int i = 0; i < Columns; i++)
+        //var moves = new List<Tuple<int, int>>();
+
+        //for (int i = 0; i < Columns; i++)
+        //{
+        //    Board _board = Copys();
+
+        //    if (!_board.DropCoin(playerId, i))
+        //        continue;
+        //    moves.Add(Tuple.Create(i, _board.MinMax(depth, playerId)));
+        //    _board.RemoveTopCoin(i);
+        //}
+        //Console.WriteLine($"{playerId} player: {String.Join(", ", moves.Select(x => $"{x.Item1 + 1} {x.Item2}"))}");
+
+        var moves = Enumerable.Range(0, Columns).AsParallel().Select(i =>
         {
-            if (!DropCoin(playerId, i))
-                continue;
-            moves.Add(Tuple.Create(i, MinMax(depth, playerId)));
-            RemoveTopCoin(i);
+            Board _board = Copys();
+
+            if (_board.DropCoin(playerId, i))
+                return Tuple.Create(i, _board.MinMax(depth, playerId));
+            return Tuple.Create(-1, -1);
         }
+        ).Where(x => x.Item1 != -1).ToList();
+
         Console.WriteLine($"{playerId} player: {String.Join(", ", moves.Select(x => $"{x.Item1+1} {x.Item2}"))}");
 
         int maxMoveScore = moves.Max(t => t.Item2);
-        var bestMoves = moves.Where(t => t.Item2 == maxMoveScore).OrderBy(t => Math.Abs(t.Item1 - Columns/2)).ToList();
-        return bestMoves[random.Next(0, bestMoves.Count)].Item1;
+        return moves.Where(t => t.Item2 == maxMoveScore).OrderBy(t => Math.Abs(t.Item1 - Columns / 2)).First().Item1;
     }
 
-    int MinMax(int depth, int playerId, bool maximizingPlayer = false, int alpha = int.MinValue, int beta = int.MaxValue)
+    public int MinMax(int depth, int playerId, bool maximizingPlayer = false, int alpha = int.MinValue, int beta = int.MaxValue)
     {
+        //Console.WriteLine(this);
         var winner = Winner;
         if (winner == playerId)
             return (depth+1)*100000;
